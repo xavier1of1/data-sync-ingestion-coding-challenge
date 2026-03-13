@@ -33,10 +33,10 @@ const envSchema = z.object({
   DB_SYNCHRONOUS_COMMIT: z
     .enum(["on", "off", "local", "remote_write", "remote_apply"])
     .default("off"),
-  DEFAULT_PAGE_LIMIT: z.coerce.number().int().positive().default(1000),
-  LEASE_DURATION_SECONDS: z.coerce.number().int().positive().default(30),
-  WORKER_POLL_DELAY_MS: z.coerce.number().int().positive().default(1000),
-  MAX_TRANSIENT_RETRIES: z.coerce.number().int().positive().default(4),
+  DEFAULT_PAGE_LIMIT: z.coerce.number().int().positive().default(5000),
+  LEASE_DURATION_SECONDS: z.coerce.number().int().positive().default(120),
+  WORKER_POLL_DELAY_MS: z.coerce.number().int().positive().default(250),
+  MAX_TRANSIENT_RETRIES: z.coerce.number().int().positive().default(3),
   RETRY_BASE_DELAY_MS: z.coerce.number().int().positive().default(250),
   RETRY_MAX_DELAY_MS: z.coerce.number().int().positive().default(5000),
   EXPORT_FILE_PATH: z.string().min(1).default("/app/output/event_ids.txt"),
@@ -75,3 +75,5 @@ export function loadConfig(): AppConfig {
     nodeEnv: parsed.NODE_ENV,
   };
 }
+
+

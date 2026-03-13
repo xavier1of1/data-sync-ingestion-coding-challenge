@@ -21,6 +21,23 @@ export class JobsRepo {
     return result.rowCount ?? 0;
   }
 
+  public async recoverFailedJobsForRun(pool: Pool, runId: number): Promise<number> {
+    const result = await pool.query(
+      `
+      UPDATE ingestion_jobs
+      SET status = 'pending',
+          available_at = NOW(),
+          lease_expires_at = NULL,
+          attempt_count = 0
+      WHERE run_id = $1
+        AND status = 'failed'
+      `,
+      [runId],
+    );
+
+    return result.rowCount ?? 0;
+  }
+
   public async ensureSingleStreamJob(pool: Pool, runId: number, pageLimit: number): Promise<void> {
     const existing = await pool.query(
       `
@@ -58,6 +75,21 @@ export class JobsRepo {
       `,
       [runId, pageLimit],
     );
+  }
+
+  public async bumpPageLimitForRun(pool: Pool, runId: number, pageLimit: number): Promise<number> {
+    const result = await pool.query(
+      `
+      UPDATE ingestion_jobs
+      SET page_limit = $2
+      WHERE run_id = $1
+        AND status <> 'completed'
+        AND page_limit < $2
+      `,
+      [runId, pageLimit],
+    );
+
+    return result.rowCount ?? 0;
   }
 
   public async leaseNextJob(
@@ -240,3 +272,7 @@ function mapJob(row: any): IngestionJobRecord {
 function truncateError(message: string): string {
   return message.length <= 2000 ? message : `${message.slice(0, 1997)}...`;
 }
+
+
+
+

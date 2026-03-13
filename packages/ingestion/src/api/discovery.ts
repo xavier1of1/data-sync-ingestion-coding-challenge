@@ -3,15 +3,9 @@ import type { Logger } from "pino";
 import type { DiscoveryResult, HeaderSnapshot, PageLimitProbe } from "../types";
 import type { ApiClient } from "./client";
 
-const ENDPOINT_CANDIDATES = [
-  "/events",
-  "/analytics/events",
-  "/dashboard/events",
-  "/internal/events",
-  "/event-stream/events",
-];
+const ENDPOINT_CANDIDATES = ["/events", "/sessions", "/metrics"];
 
-const LIMIT_PROBES = [100, 250, 500, 1000, 2000];
+const LIMIT_PROBES = [2000, 5000, 10000];
 
 export async function runDiscovery(
   client: ApiClient,
@@ -238,3 +232,4 @@ function extractRecords(data: unknown): unknown[] {
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
+

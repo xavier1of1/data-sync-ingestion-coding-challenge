@@ -1,14 +1,25 @@
+import http from "node:http";
+import https from "node:https";
 import { setTimeout as delay } from "node:timers/promises";
 
 import axios, {
   AxiosError,
   type AxiosInstance,
   type AxiosRequestConfig,
-  type AxiosResponse,
 } from "axios";
 import type { Logger } from "pino";
 
 import type { AppConfig } from "../types";
+
+const HTTP_AGENT = new http.Agent({
+  keepAlive: true,
+  maxSockets: 32,
+});
+
+const HTTPS_AGENT = new https.Agent({
+  keepAlive: true,
+  maxSockets: 32,
+});
 
 export interface ApiRequestOptions {
   maxAttempts: number;
@@ -59,7 +70,10 @@ export class ApiClient {
       timeout: config.apiRequestTimeoutMs,
       headers: {
         "X-API-Key": config.targetApiKey,
+        "Accept-Encoding": "gzip, deflate, br",
       },
+      httpAgent: HTTP_AGENT,
+      httpsAgent: HTTPS_AGENT,
       validateStatus: () => true,
     });
   }

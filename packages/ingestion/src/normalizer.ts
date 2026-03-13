@@ -14,7 +14,7 @@ const EVENT_TYPE_KEYS = ["event_type", "eventType", "type", "name"] as const;
 const EVENT_ID_KEYS = ["id", "eventId", "event_id", "uuid"] as const;
 
 export function normalizeEvent(raw: unknown): NormalizedEvent | null {
-  const payload = toPayloadObject(raw);
+  const payload = sanitizePayload(toPayloadObject(raw));
   const eventId = pickEventId(payload);
 
   if (!eventId) {
@@ -44,8 +44,12 @@ function pickEventId(payload: Record<string, unknown>): string | null {
   for (const key of EVENT_ID_KEYS) {
     const value = payload[key];
 
-    if (typeof value === "string" && value.trim().length > 0) {
-      return value.trim();
+    if (typeof value === "string") {
+      const sanitized = sanitizeString(value).trim();
+
+      if (sanitized.length > 0) {
+        return sanitized;
+      }
     }
 
     if (typeof value === "number" && Number.isFinite(value)) {
@@ -60,8 +64,12 @@ function pickEventType(payload: Record<string, unknown>): string | null {
   for (const key of EVENT_TYPE_KEYS) {
     const value = payload[key];
 
-    if (typeof value === "string" && value.trim().length > 0) {
-      return value.trim();
+    if (typeof value === "string") {
+      const sanitized = sanitizeString(value).trim();
+
+      if (sanitized.length > 0) {
+        return sanitized;
+      }
     }
   }
 
@@ -94,7 +102,7 @@ function parseTimestamp(value: unknown): Date | null {
   }
 
   if (typeof value === "string") {
-    const trimmed = value.trim();
+    const trimmed = sanitizeString(value).trim();
 
     if (trimmed.length === 0) {
       return null;
@@ -119,4 +127,43 @@ function fromNumericTimestamp(value: number): Date | null {
   const asMilliseconds = Math.abs(value) < 1e11 ? value * 1000 : value;
   const parsed = new Date(asMilliseconds);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function sanitizePayload(value: unknown): Record<string, unknown> {
+  const sanitized = sanitizeValue(value);
+
+  if (typeof sanitized === "object" && sanitized !== null && !Array.isArray(sanitized)) {
+    return sanitized as Record<string, unknown>;
+  }
+
+  return {
+    value: sanitized,
+  };
+}
+
+function sanitizeValue(value: unknown): unknown {
+  if (typeof value === "string") {
+    return sanitizeString(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeValue(entry));
+  }
+
+  if (typeof value === "object" && value !== null) {
+    const record = value as Record<string, unknown>;
+    const sanitized: Record<string, unknown> = {};
+
+    for (const [key, nested] of Object.entries(record)) {
+      sanitized[key] = sanitizeValue(nested);
+    }
+
+    return sanitized;
+  }
+
+  return value;
+}
+
+function sanitizeString(value: string): string {
+  return value.replace(/\u0000/g, "");
 }

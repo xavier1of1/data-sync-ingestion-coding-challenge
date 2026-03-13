@@ -24,7 +24,31 @@ export class Coordinator {
     const run = await this.getOrCreateRun(discovery);
 
     await this.jobsRepo.recoverExpiredLeases(this.pool, run.id);
+    const recoveredFailedJobs = await this.jobsRepo.recoverFailedJobsForRun(this.pool, run.id);
     await this.jobsRepo.ensureSingleStreamJob(this.pool, run.id, pageLimit);
+
+    if (recoveredFailedJobs > 0) {
+      this.logger.info(
+        {
+          runId: run.id,
+          recoveredFailedJobs,
+        },
+        "recovered failed jobs for resumed run",
+      );
+    }
+
+    const updatedJobLimits = await this.jobsRepo.bumpPageLimitForRun(this.pool, run.id, pageLimit);
+
+    if (updatedJobLimits > 0) {
+      this.logger.info(
+        {
+          runId: run.id,
+          updatedJobLimits,
+          pageLimit,
+        },
+        "updated existing job page limits to discovered value",
+      );
+    }
 
     this.logger.info(
       {
@@ -90,6 +114,16 @@ export class Coordinator {
       };
     }
 
+    const failed = await this.runsRepo.findLatestFailed(this.pool);
+
+    if (failed) {
+      await this.runsRepo.setStatus(this.pool, failed.id, "running");
+      return {
+        ...failed,
+        status: "running",
+      };
+    }
+
     return this.runsRepo.createRun(this.pool, "single-stream", discovery);
   }
 }
@@ -105,3 +139,6 @@ function choosePageLimit(discovery: DiscoveryResult, fallback: number): number {
 
   return Math.max(...successful);
 }
+
+
+

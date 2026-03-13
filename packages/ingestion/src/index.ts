@@ -71,14 +71,24 @@ async function main(): Promise<void> {
   const jobsRepo = new JobsRepo();
   const runsRepo = new RunsRepo();
 
-  const fetchStrategy = new CursorFetchStrategy(apiClient, config, logger, "/events");
+  const activeEndpoint = discovery.selectedEndpoint ?? "/events";
+  const fetchStrategy = new CursorFetchStrategy(apiClient, config, logger, activeEndpoint);
   const worker = new Worker(pool, config, logger, fetchStrategy, eventsRepo, jobsRepo, runsRepo);
   const coordinator = new Coordinator(pool, config, logger, runsRepo, jobsRepo, worker);
 
   await coordinator.run(discovery);
 
-  const exportResult = await exportEventIds(pool, config, logger);
-  await submitResults(config, exportResult.filePath, logger);
+  try {
+    const exportResult = await exportEventIds(pool, config, logger);
+    await submitResults(config, exportResult.filePath, logger);
+  } catch (error) {
+    logger.warn(
+      {
+        err: error,
+      },
+      "post-ingestion export/submission failed; keeping ingestion process healthy",
+    );
+  }
 
   logger.info("ingestion complete");
 
@@ -117,3 +127,6 @@ void main().catch(async (error: unknown) => {
 
   process.exit(1);
 });
+
+
+

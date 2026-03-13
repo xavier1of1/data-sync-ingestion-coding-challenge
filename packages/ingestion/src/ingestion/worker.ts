@@ -23,12 +23,15 @@ export class Worker {
 
   public async processLeasedJob(job: IngestionJobRecord): Promise<void> {
     try {
+      const fetchStartedAt = Date.now();
       const page = await this.strategy.fetchPage(job);
+      const fetchDurationMs = Date.now() - fetchStartedAt;
 
       const normalizedEvents = page.records
         .map((record) => normalizeEvent(record))
         .filter((event): event is NonNullable<typeof event> => event !== null);
 
+      const txStartedAt = Date.now();
       const insertedCount = await withTransaction(this.pool, async (client) => {
         const inserted = await this.eventsRepo.insertBatch(client, normalizedEvents);
 
@@ -44,22 +47,29 @@ export class Worker {
 
         return inserted;
       });
+      const txDurationMs = Date.now() - txStartedAt;
 
       const droppedDuringNormalization = page.records.length - normalizedEvents.length;
 
-      this.logger.info(
-        {
-          jobId: job.id,
-          strategy: this.strategy.name,
-          fetchedRecords: page.records.length,
-          normalizedRecords: normalizedEvents.length,
-          insertedRecords: insertedCount,
-          droppedRecords: droppedDuringNormalization,
-          hasMore: page.hasMore,
-          nextCursor: page.nextCursor,
-        },
-        "processed ingestion page",
-      );
+      const nextPageCount = job.pagesProcessed + 1;
+      const logPayload = {
+        jobId: job.id,
+        strategy: this.strategy.name,
+        fetchedRecords: page.records.length,
+        normalizedRecords: normalizedEvents.length,
+        insertedRecords: insertedCount,
+        droppedRecords: droppedDuringNormalization,
+        hasMore: page.hasMore,
+        nextCursor: page.nextCursor,
+        fetchDurationMs,
+        dbDurationMs: txDurationMs,
+      };
+
+      if (!page.hasMore || nextPageCount % 20 === 0) {
+        this.logger.info(logPayload, "processed ingestion page");
+      } else {
+        this.logger.debug(logPayload, "processed ingestion page");
+      }
     } catch (error) {
       await this.handleJobError(job, error);
     }
@@ -141,3 +151,4 @@ function computeRetryDelay(
   const jitter = Math.floor(Math.random() * baseDelayMs);
   return Math.min(baseDelayMs * 2 ** (attempt - 1) + jitter, maxDelayMs);
 }
+

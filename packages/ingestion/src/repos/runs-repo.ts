@@ -21,6 +21,24 @@ export class RunsRepo {
     return mapRun(result.rows[0]);
   }
 
+  public async findLatestFailed(pool: Pool): Promise<IngestionRunRecord | null> {
+    const result = await pool.query(
+      `
+      SELECT *
+      FROM ingestion_runs
+      WHERE status = 'failed'
+      ORDER BY id DESC
+      LIMIT 1
+      `,
+    );
+
+    if (result.rowCount === 0) {
+      return null;
+    }
+
+    return mapRun(result.rows[0]);
+  }
+
   public async createRun(
     pool: Pool,
     mode: string,
@@ -110,3 +128,5 @@ function mapRun(row: any): IngestionRunRecord {
     lastError: row.last_error,
   };
 }
+
+
