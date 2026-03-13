@@ -1,0 +1,33 @@
+{
+  "name": "data-sync-ingestion-coding-challenge",
+  "version": "1.0.0",
+  "description": "Build a production-ready data ingestion system that extracts event data from the DataSync Analytics API and stores it in a PostgreSQL database.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.13.6",
+    "dotenv": "^17.3.1",
+    "luxon": "^3.7.2",
+    "p-limit": "^7.3.0",
+    "pg": "^8.20.0",
+    "pino": "^10.3.1",
+    "tsx": "^4.21.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.5.0",
+    "eslint": "^10.0.3",
+    "jest": "^30.3.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
